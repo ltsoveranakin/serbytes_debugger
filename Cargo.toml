@@ -1,0 +1,9 @@
+[package]
+name = "serbytes_debugger"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+eframe = "0.34.3"
+egui_extras = "0.34.3"
+serbytes = { git = "https://github.com/ltsoveranakin/serbytes.git" }
