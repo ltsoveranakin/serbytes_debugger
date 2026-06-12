@@ -1,3 +1,4 @@
+mod binary_panel;
 mod dbg_app;
 mod serializer_panel;
 mod types;
@@ -19,6 +20,6 @@ fn main() {
     let _ = eframe::run_native(
         "SerBytes Debugger",
         options,
-        Box::new(|_| Ok(Box::new(DebuggerApp::new()))),
+        Box::new(|_| Ok(Box::new(DebuggerApp::default()))),
     );
 }
