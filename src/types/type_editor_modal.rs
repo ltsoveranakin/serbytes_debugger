@@ -61,7 +61,7 @@ impl TypeEditorModal {
                 ui.label("Fields:");
 
                 if ui.button("Add field").clicked() {
-                    fields.reg(Field::new_dt(
+                    fields.reg_single(Field::new_dt(
                         "field",
                         Rc::clone(type_map.get("()").unwrap()),
                     ))

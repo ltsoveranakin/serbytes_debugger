@@ -29,13 +29,6 @@ where
         s
     }
 
-    pub(super) fn reg<I>(&mut self, value: I)
-    where
-        I: Into<T>,
-    {
-        self.reg_mul(vec![value])
-    }
-
     pub(super) fn reg_mul<I>(&mut self, values: Vec<I>)
     where
         I: Into<T>,
@@ -51,13 +44,40 @@ where
         }
     }
 
-    pub(super) fn reg_with_map<I>(&mut self, f: impl Fn(&Registry<T>) -> I)
+    pub(super) fn reg_single<I>(&mut self, value: I)
+    where
+        I: Into<T>,
+    {
+        self.reg_mul(vec![value])
+    }
+
+    pub(super) fn reg_with_map<I>(&mut self, f: impl FnOnce(&Registry<T>) -> I)
     where
         I: Into<T>,
     {
         let declared_type = f(self);
 
-        self.reg(declared_type);
+        self.reg_single(declared_type);
+    }
+
+    pub(super) fn reg_with_map_ctx<I>(
+        &mut self,
+        f: impl FnOnce(&Self) -> I,
+    ) -> RegistrationContext<T>
+    where
+        I: Into<T>,
+        T: Clone,
+    {
+        let declared_type = f(self);
+        let value = declared_type.into();
+        let cloned_value = value.clone();
+
+        self.reg_single(value);
+
+        RegistrationContext {
+            registry: self,
+            cloned_value,
+        }
     }
 
     pub(super) fn get_by_name(&self, name: &str) -> Option<&T> {
@@ -80,6 +100,22 @@ where
 
     pub(super) fn into_values(self) -> Vec<T> {
         self.vec
+    }
+}
+
+pub(super) struct RegistrationContext<'a, T> {
+    pub(super) registry: &'a mut Registry<T>,
+    pub(super) cloned_value: T,
+}
+
+impl<'a, T> RegistrationContext<'a, T>
+where
+    T: Named,
+{
+    pub(super) fn reg_sim(self, f: impl FnOnce(&Registry<T>, T) -> T) {
+        let value = f(&self.registry, self.cloned_value);
+
+        self.registry.reg_single(value);
     }
 }
 
