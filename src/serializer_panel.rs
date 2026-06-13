@@ -1,6 +1,6 @@
 use crate::binary_panel::BinaryFile;
 use crate::types::declared_type::DtRc;
-use crate::types::{render_code, GetValueRepr};
+use crate::types::render_code;
 use eframe::egui::Ui;
 
 #[derive(Default)]
@@ -28,7 +28,7 @@ impl SerializerPanel {
                 && let Ok(rbb) = binary_file.get_buffer()
             {
                 cols[1].group(|ui| {
-                    render_code(ui, &ct.get_value_repr(&mut rbb.peek().rbb_ref_mut()));
+                    render_code(ui, &ct.deser_value(&mut rbb.peek().rbb_ref_mut()));
                 });
             }
         });

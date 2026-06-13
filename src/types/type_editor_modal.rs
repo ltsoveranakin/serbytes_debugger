@@ -1,5 +1,6 @@
-use crate::types::declared_type::{DeclaredType, DtRc};
-use crate::types::field::Field;
+use crate::types::declared_type::{DeclaredType, DtRc, TypeOf};
+use crate::types::field::{Field, FieldType};
+use crate::types::generics::Generic;
 use eframe::egui::{Id, Modal, Ui};
 use std::collections::HashMap;
 use std::mem;
@@ -34,52 +35,120 @@ impl TypeEditorModal {
             ui.label("Name:");
             ui.text_edit_singleline(&mut self.declared_type_editing.name);
 
-            ui.separator();
+            if let TypeOf::FieldsType {
+                fields, generics, ..
+            } = &mut self.declared_type_editing.type_of
+            {
+                ui.separator();
 
-            ui.label("Fields:");
+                ui.label("Generics:");
 
-            if ui.button("Add field").clicked() {
-                self.declared_type_editing.fields.push(Field::new(
-                    "field".to_string(),
-                    Rc::clone(type_map.get("()").unwrap()),
-                ))
-            }
+                if ui.button("Add generic").clicked() {
+                    generics
+                        .borrow_mut()
+                        .push(Generic::new("T", Rc::clone(type_map.get("()").unwrap())))
+                }
 
-            let mut delete_index = None;
+                for generic in generics.borrow_mut().iter_mut() {
+                    ui.horizontal(|ui| {
+                        ui.text_edit_singleline(&mut generic.name);
+                        if ui.button("Delete").clicked() {}
+                    });
+                }
 
-            for (i, field) in self.declared_type_editing.fields.iter_mut().enumerate() {
-                ui.horizontal(|ui| {
-                    ui.text_edit_singleline(&mut field.name);
-                    ui.label(":");
+                ui.separator();
 
-                    let new_type_opt = ui
-                        .menu_button(&field.field_ty.borrow().name, |ui| {
-                            let mut nt = None;
+                ui.label("Fields:");
 
-                            for declared_type in types {
-                                if ui.button(&declared_type.borrow().name).clicked() {
-                                    nt = Some(Rc::clone(declared_type));
+                if ui.button("Add field").clicked() {
+                    fields.reg(Field::new_dt(
+                        "field",
+                        Rc::clone(type_map.get("()").unwrap()),
+                    ))
+                }
+
+                let mut delete_index = None;
+
+                for (i, field) in fields.iter_mut().enumerate() {
+                    ui.horizontal(|ui| {
+                        let field_type_text = match field.field_ty {
+                            FieldType::Generic(_) => "generic",
+                            FieldType::DtRc(_) => "concrete type",
+                        };
+
+                        ui.menu_button(format!("Field type: {}", field_type_text), |ui| {
+                            if ui.button("Concrete").clicked() {
+                                field.field_ty =
+                                    FieldType::DtRc(Rc::clone(type_map.get("()").unwrap()));
+                            }
+
+                            if ui.button("Generic").clicked() {
+                                field.field_ty = FieldType::Generic(0);
+                            }
+                        });
+                        ui.text_edit_singleline(&mut field.name);
+                        ui.label(":");
+
+                        match &field.field_ty {
+                            FieldType::Generic(index) => {
+                                let generics = generics.borrow();
+                                let generic_at_index_name = generics
+                                    .get(*index)
+                                    .map_or_else(|| "<invalid generic index>", |gener| &gener.name);
+
+                                let new_gen_index_opt = ui
+                                    .menu_button(generic_at_index_name, |ui| {
+                                        let mut ngi = None;
+
+                                        for (i, generic) in generics.iter().enumerate() {
+                                            if ui.button(&generic.name).clicked() {
+                                                ngi = Some(i);
+                                            }
+                                        }
+
+                                        ngi
+                                    })
+                                    .inner;
+
+                                if let Some(new_index_o) = new_gen_index_opt
+                                    && let Some(new_index) = new_index_o
+                                {
+                                    field.field_ty = FieldType::Generic(new_index);
                                 }
                             }
 
-                            nt
-                        })
-                        .inner;
+                            FieldType::DtRc(dtrc) => {
+                                let new_type_opt = ui
+                                    .menu_button(&dtrc.borrow().name, |ui| {
+                                        let mut nt = None;
 
-                    if let Some(new_type_o) = new_type_opt
-                        && let Some(new_type) = new_type_o
-                    {
-                        field.field_ty = new_type;
-                    }
+                                        for declared_type in types {
+                                            if ui.button(&declared_type.borrow().name).clicked() {
+                                                nt = Some(Rc::clone(declared_type));
+                                            }
+                                        }
 
-                    if ui.button("Delete").clicked() {
-                        delete_index = Some(i)
-                    }
-                });
-            }
+                                        nt
+                                    })
+                                    .inner;
 
-            if let Some(i) = delete_index {
-                self.declared_type_editing.fields.remove(i);
+                                if let Some(new_type_o) = new_type_opt
+                                    && let Some(new_type) = new_type_o
+                                {
+                                    field.field_ty = FieldType::DtRc(new_type);
+                                }
+                            }
+                        };
+
+                        if ui.button("Delete").clicked() {
+                            delete_index = Some(i)
+                        }
+                    });
+                }
+
+                if let Some(i) = delete_index {
+                    fields.remove(i);
+                }
             }
 
             ui.separator();

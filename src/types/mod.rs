@@ -1,6 +1,8 @@
 pub(crate) mod declared_type;
 mod field;
+mod generics;
 mod predefined;
+mod registry;
 mod type_editor_modal;
 
 use crate::types::declared_type::{DeclaredType, DtRc};
